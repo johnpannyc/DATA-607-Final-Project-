@@ -1,0 +1,67 @@
+---
+title: "data 607 final project"
+author: "Hui Han (Gracie), Jun Pan"
+date: "November 9, 2018"
+output: html_document
+---
+
+```
+Project Name: Does oral and dental hygiene plays a role in glaucoma?
+
+Team Member: Hui Han, Jun Pan
+
+Motivation: 1n 2017, Dr. Casella reported that oral and dental hygiene plays an important role in glaucoma (January 2017, OptemeryTimes.com).  This pilot study (119 cases) does well to point out the fact that the elevated presence of certain bacterial species in the oral cavity can serve as a catalyst for a pro-inflammatory response on the part of the immune system, which will lead to glaucoma.  However, there is few report about the correlation between glaucoma and dental/oral hygiene.   Thus, it is necessary to study the relationship between dental/oral hygiene on a bigger scale database.
+
+Data Source: Korea National Health and Nutrition Examination Survey (KNHANES http://knhanes.cdc.go.kr) has a total of 13,831 participants with age 40 or above.  This survey uses a complex, stratified, multistage, probability-cluster survey. There are more than 500 papers published on professional journal since 1998.  The data based which we are going to use are the following years (2008, 2010, and 2011).
+
+Data Science Workflow: (1) read.csv files; (2) combine, clean, subset, transformation; (3) demograhic information to describe the study population, logistic regression analyses will be used to evaluate the factor of dental/oral hygiene for glaucoma.  The result will be adjust by possible impact of other factors such as smoking, diabetes, and  hypertenstion.
+
+The final results will be published on professinal medical journal next year. 
+```
+
+```{r}
+require(rvest)
+require(dplyr)
+require(stringr)
+require(tidyr)
+require(dplyr)
+require(ggplot2)
+```
+
+```{r}
+data2008 <- read.csv("https://raw.githubusercontent.com/johnpannyc/DATA-607-Final-Project-/master/Complete%20Year%202008%20Glaucoma.csv")
+data2010 <- read.csv("https://raw.githubusercontent.com/johnpannyc/DATA-607-Final-Project-/master/Complete%20Year%202010%20Glaucoma.csv")
+data2011 <- read.csv("https://raw.githubusercontent.com/johnpannyc/DATA-607-Final-Project-/27db2de104e0dc35765409fd5edcc016a3a5d768/Complete%20Year%202011%20Glaucoma.csv")
+```
+
+```{r}
+dim(data2008)
+```
+
+
+```{r}
+dim(data2010)
+```
+
+```{r}
+dim(data2011)
+```
+```{r}
+head(data2011)
+```
+
+
+Using the dim command, we can see that the KNHANES data is based on larger population collection many health relation informations.  
+
+#we already did some preliminary analysis.
+
+Here is the demographic information of the study population:
+"https://github.com/johnpannyc/DATA-607-Final-Project-/blob/master/demographic%20information%20of%20KNHANES.png"
+
+Here is the oral health variable information
+"https://github.com/johnpannyc/DATA-607-Final-Project-/blob/master/oral%20health%20variables.png"
+
+
+
+
+
