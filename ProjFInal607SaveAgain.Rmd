@@ -1,0 +1,356 @@
+---
+title: "ProjFInal607"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(gtools)
+library(haven)
+library(ggplot2)
+library(survey)
+
+```
+
+```{r}
+survey08 <- read_sas("SAS Files/HN08_ALL.sas7bdat",encoding = "UTF-8")  ## need encoding
+survey09 <- read_sas("SAS Files/HN09_ALL.sas7bdat",encoding = "UTF-8") ## covariate data
+survey10 <- read_sas("SAS Files/HN10_ALL.sas7bdat",encoding = "UTF-8")
+survey11 <- read_sas("SAS Files/HN11_ALL.sas7bdat",encoding = "UTF-8")
+
+colnames(survey11)[2] <- "ID"
+## EYE DATA
+eye08 <- as.data.frame(read_sas("SAS Files/HN08_EYE.sas7bdat",encoding = "UTF-8"))
+eye09 <- as.data.frame(read_sas("SAS Files/HN09_EYE.sas7bdat",encoding = "UTF-8"))
+eye10 <- as.data.frame(read_sas("SAS Files/HN10_EYE.sas7bdat",encoding = "UTF-8"))
+eye11 <- as.data.frame(read_sas("SAS Files/hn11_eye.sas7bdat",encoding = "UTF-8"))
+# eye08 etc: raw eye data, without VR glaucoma
+
+colnames(eye08) <- toupper(colnames(eye08))
+colnames(eye09) <- toupper(colnames(eye09))
+colnames(eye10) <- toupper(colnames(eye10))
+colnames(eye11) <- toupper(colnames(eye11))
+
+#  write_csv(eye08,"Raw CSV/eye08.csv")
+#  write_csv(eye09,"Raw CSV/eye09.csv")
+# write_csv(eye10,"Raw CSV/eye10.csv")
+# write_csv(eye11,"Raw CSV/eye11.csv")
+
+eyeTotal <- smartbind(eye08,eye09,eye10,eye11)
+# write_csv(eyeTotal,"Output/eyeTotal4yr.csv")  #successful
+```
+
+
+```{r}
+# write_csv(survey08,"Raw CSV/survey08.csv")
+# write_csv(survey09,"Raw CSV/survey09.csv")
+# write_csv(survey10,"Raw CSV/survey10.csv")
+# write_csv(survey11,"Raw CSV/survey11.csv")
+
+# diabetes survey question
+createDia <- function (data) {
+  return (select(data,which(colnames(data)=="ID"),starts_with("DE1_"),starts_with("HE_"),
+                 starts_with("BS3_"),starts_with("BS1_")))
+}
+diabetes08 <- createDia(survey08)
+diabetes09 <- createDia(survey09)
+diabetes10 <- createDia(survey10)
+
+diabetes11 <- createDia(survey11)
+
+```
+
+```{r}
+# Smart Bind  edited Excel 
+oral08 <- read.csv("OralData/oral08.csv")
+oral09 <- read.csv("OralData/oral09.csv")
+oral10 <- read.csv("OralData/oral10.csv")
+oral11 <- read.csv("OralData/oral11.csv")
+```
+
+```{r}
+## Read data that have the eye data (GLAUCOMA)
+year2008 <- read.csv("Complete Year 2008 Glaucoma.csv")
+# year 2009 need modification
+year2009 <- read.csv("Year 2009.csv")
+year2009$Glaucoma[is.na(year2009$Glaucoma)] <- 1  ## fill in the blanks for glaucoma N=631 of them
+year2010 <- read.csv("Complete Year 2010 Glaucoma.csv")
+year2011 <- read.csv("Complete Year 2011 Glaucoma.csv")
+
+year2008 <- year2008[,1:which(colnames(year2008)=="Glaucoma")]
+year2009 <- year2009[,1:which(colnames(year2009)=="Glaucoma")]
+year2010 <- year2010[,1:which(colnames(year2010)=="Glaucoma")]
+year2011 <- year2011[,c(1:which(colnames(year2011)=="E_DL_14"),
+                        which(colnames(year2011)=="Glaucoma"))]
+
+# year2008 <- inner_join(year2008,oral08,by = "id",suffix = c("",".1"))
+year2008 <- inner_join(year2008,oral08,by = "id",suffix = c("",".1"))
+test2009 <- inner_join(year2009,oral09,by = "id",suffix = c("",".1"))
+year2009 <- test2009
+year2009$X <- NULL
+year2009$X.1 <- NULL
+test2010 <- inner_join(year2010,oral10,by="ID",suffix = c("",".1"))
+year2010 <- test2010
+test2011 <- inner_join(year2011,oral11,by = "ID",suffix = c("",".1"))
+year2011 <- test2011
+
+```
+
+
+```{r}
+# Smart Binding For TestAll Years Fix-----------------------------------------------------
+test2008 <- year2008  ## oral data, 
+test2009 <- year2009
+test2010 <- year2010
+test2011 <- year2011
+
+colnames(test2008) <- toupper(colnames(test2008))
+colnames(test2009) <- toupper(colnames(test2009))
+colnames(test2010) <- toupper(colnames(test2010))
+colnames(test2011) <- toupper(colnames(test2011))
+
+# # GH:
+# test2008 <- inner_join(test2008,diabetes08, by = "ID")
+# test2009 <- inner_join(test2009,diabetes09, by = "ID")
+# test2010 <- inner_join(test2010,diabetes10, by = "ID")
+# test2011 <- inner_join(test2011,diabetes11, by = "ID")
+
+
+ testTotalyr <- smartbind(test2008, test2009, test2010, test2011)
+
+# write_csv(testTotalyr, 'Output/testTotalyr.csv')  #  successful
+# above: Glaucoma no missing, dental VR only raw, no summary though
+```
+```{r}
+testAllYearsFix <- testTotalyr
+head(testAllYearsFix)
+ 
+```
+
+
+```{r}
+# write_csv (testAllYearsFix,"Output/testAllYearsFixDec8.csv")##  successful
+```
+
+
+```{r}
+# Finding NumTeeth --------------------------------------------------------
+data <- testAllYearsFix
+    # Create A HTeethCount Col ------------------------------------------------
+        ###   ____ creating a HTeethCount Col ____  ###
+        firTeethCol <- which(colnames(data)=="O_18B")
+        secTeethCol <- which(colnames(data)=="O_38B")#18B - 38B adult teeth
+        
+        teethdata <- data[,c(1,which(colnames(data)=="GLAUCOMA"),firTeethCol:secTeethCol)] 
+        #Take out Wisdom teeth 18,28,48,38
+        wisdomIndicies <- c(which(substr(colnames(teethdata),3,4)=="18"),
+                            which(substr(colnames(teethdata),3,4)=="28"),
+                            which(substr(colnames(teethdata),3,4)=="38"),
+                            which(substr(colnames(teethdata),3,4)=="48"))
+        ## write a function for wisdomTeetchIndicies
+        teethdata <- teethdata[,-wisdomIndicies]
+        ## Get rid of Wisdome teeth count
+        teethdata$numHTeeth <- 0
+        for (i in 1:NROW(teethdata)) {
+          uHealthyI <- c()
+          healthyI <- c()
+          empty <- FALSE
+          for (j in which(colnames(teethdata)=="O_17B"):which(colnames(teethdata)=="O_37B")) {
+            #Edge Case
+            if (is.na(teethdata[i,j]) == TRUE) {
+              empty <- TRUE
+              teethdata[i,"numHTeeth"] <- "EMPTY"
+              break
+            }
+            if (!(teethdata[i,j] == 0 | teethdata[i,j] == 3 | 
+                  teethdata[i,j] == 6 | teethdata[i,j] == 1)) {
+              uHealthyI <- append(uHealthyI,substr(colnames(teethdata)[j],3,4))
+            }
+            healthyI <- append(healthyI,substr(colnames(teethdata)[j],3,4))
+          }
+          if (!empty) { 
+            teethdata[i,"numHTeeth"] <- length(setdiff(healthyI,uHealthyI))
+          } 
+        }
+        #this produces strings, but they will be coercied into N/a by as.numeric and then ignored
+        
+```
+
+
+```{r}
+# Creating a Categorial Variable for numTeeth -----------------------------
+# temp <- data
+
+
+## Counting Healthy Teeth
+# createTeethPresentCol <- function(data) {
+#   data$presentTeeth <- 0
+#   data$numHTeeth <- as.numeric(data$numHTeeth)
+#   for (i in 1:dim(data)[1]) {
+#     if (is.na(data$numHTeeth[i])) {
+#       data$presentTeeth[i] <- NA
+#       next
+#     }
+#     else if (data$numHTeeth[i] %/% 7 == 0) {
+#       data$presentTeeth[i] <- 1
+#     }
+#     else if (data$numHTeeth[i] %/% 7 == 1) {
+#       data$presentTeeth[i] <- 2
+#     }
+#     else if (data$numHTeeth[i] %/% 7 == 2) {
+#       data$presentTeeth[i] <- 3
+#     }
+#     else if (data$numHTeeth[i] %/% 7 == 3 | data$numHTeeth[i] == 28) {
+#       data$presentTeeth[i] <- 4
+#     }
+#   }
+#   return (data)
+# }
+
+# createTeethPresentCol2 <- function(data) {
+#   data$presentTeeth <- 0
+#   data$numHTeeth <- as.numeric(data$numHTeeth)
+#   for (i in 1:dim(data)[1]) {
+#     if (is.na(data$numHTeeth[i])) {
+#       data$presentTeeth[i] <- NA
+#       next
+#     }
+#     else if (data$numHTeeth[i] >= 0 & data$numHTeeth[i] <= 10)   {
+#       data$presentTeeth[i] <- 1
+#     }
+#     else if (data$numHTeeth[i] > 10 & data$numHTeeth[i] <= 20) {
+#       data$presentTeeth[i] <- 2
+#     }
+#     else if (data$numHTeeth[i] > 20 & data$numHTeeth[i] <= 28) {
+#       data$presentTeeth[i] <- 3
+#     }
+#     
+#   }
+#   return (data)
+# }
+
+ #data$numHTeeth <- teethdata$numHTeeth
+# data <- createTeethPresentCol2(data)
+# Error in `$<-.data.frame`(`*tmp*`, numHTeeth, value = c("15", "28", "28", : replacement has 16109 rows, data has 13153
+```
+
+```{r}
+# Creating a Categorial Variable for numTeeth -----------------------------
+#x <- na.omit(airquality)
+temp <- data
+source("CountinTN.R")
+ data$numHTeeth <- teethdata$numHTeeth
+ data <- createTeethPresentCol2(data)
+# Error in `$<-.data.frame`(`*tmp*`, numHTeeth, value = c("15", "28", "28", : replacement has 16109 rows, data has 13153
+
+```
+```{r}
+#x <- na.omit(airquality)
+# to remove missing in num of teeth column
+# x<-na.omit(data$numTeeth)
+```
+
+
+```{r}
+data <- data[ which(data$GLAUCOMA== 0 | data$GLAUCOMA==1), ]
+## get rid of GLAUCOMA = 9 (undefined)
+
+# find column names from this data
+colnames(data)
+
+######## get rid of the unwanted columns #######
+# data %>% 
+#   select (ID, GLAUCOMA) ## seems not working, still more than 500 col names
+# colnames (data)
+```
+```{r}
+## examine the total weight variable
+class(data$WT_TOT)
+
+mean(data$WT_TOT)
+median(data$WT_TOT)
+sd(data$WT_TOT)
+hist(data$WT_TOT)
+boxplot(data$WT_TOT)
+```
+
+
+```{r}
+#data$GLAUCOMA
+class (data$GLAUCOMA)
+summary(data$GLAUCOMA)
+length(data$GLAUCOMA)
+```
+
+
+```{r}
+
+data <- data[ which(data$WT_TOT !='NA'),]
+# get rid of the NA in sample weights (have trouble running the svydesign)
+summary(data$WT_TOT)
+```
+
+```{r}
+# relationship between glaucoma and Teeth VR, there are many NA in dental VR
+data <- data[ which(data$numHTeeth !='EMPTY'),]
+class (data$numHTeeth)  # character now
+table(data$numHTeeth)
+# barplot(data$numHTeeth) # error not working
+
+# WHY everyone is gone? NULL NOW??
+```
+```{r}
+#install.packages('knitr')
+# library(knitr)
+# kable (data$numHTeeth)  ## many many rows produced
+```
+
+```{r}
+## two variables, numHTeeth(character) AND GLAUCOMA (integer)
+# 
+# class(data$GLAUCOMA)
+# by(data$NPERODONTAL, data$Glaucoma,summary,na.rm=TRUE)# not working
+# boxplot(data$GLAUCOMA)
+# error:'names' attribute [1] must be the same length as the vector [0]
+
+```
+
+
+
+
+```{r}
+data %>%
+    group_by (numHTeeth) %>%
+  summarise ( AvgGlaucoma = mean(GLAUCOMA))
+
+# to DO:Plots of number of Teeth (gum trouble) and glaucoma
+```
+```{r}
+##  DEC 8 Sat
+# have to convert everything into factor for survey package purpose
+   survey <- svydesign(ids = ~PSU, weights = ~WT_TOT, strata = ~KSTRATA,
+                       data = data,nest = TRUE )  ## survey object works now
+```
+
+```{r}
+  # Estimates with the survey package (explore all the survey fuctions )
+   svymean (~GLAUCOMA, design=survey)  # error in 'names' attribute lnegh
+   svytotal (~GLAUCOMA,design=survey)
+   svyby(~GLAUCOMA,by=~numHTeeth,design=survey, FUN=svytotal)
+   
+```
+
+```{r}
+# Research Q: if gum trouble lead to glaucoma  
+   # Dec 8 GH
+   # LOGISTIC REGRESSION
+   # logistic.reg = svyglm (GLAUCOMA ~  age,   
+   #                        design = survey, family = "quasibinomial")
+   # summary(logistic.reg)
+   ## error:  all variables must be in design= argument (AGE IS NOT IN THE SURVEY DESIGN, )
+```
+
